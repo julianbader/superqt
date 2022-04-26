@@ -43,12 +43,20 @@ class QLargeIntSpinBox(QAbstractSpinBox):
         self._maximum: int = 2**64 - 1
         self._single_step: int = 1
         self._pending_emit = False
+        self._mask_text = False
         validator = _AnyIntValidator(self)
         self.lineEdit().setValidator(validator)
         self.lineEdit().textChanged.connect(self._editor_text_changed)
         self.setValue(0)
 
     # ###############  Public Functions  #######################
+
+    def setMaskLineEdit(self, mask: bool):
+        self._mask_text = mask
+        self._updateEdit()
+
+    def MaskLineEdit(self):
+        return self._mask_text
 
     def value(self):
         return self._value
@@ -154,18 +162,25 @@ class QLargeIntSpinBox(QAbstractSpinBox):
             self.valueChanged.emit(self._value)
 
     def _updateEdit(self):
+        if self._mask_text:
+            self.lineEdit().setText("****")
+            return
+
         new_text = str(self._value)
         if self.lineEdit().text() == new_text:
             return
         self.lineEdit().setText(new_text)
 
     def _interpret(self, policy):
-        text = self.lineEdit().displayText() or str(self._value)
+        if self._mask_text:
+            text = str(self._value)
+        else:
+            text = self.lineEdit().displayText() or str(self._value)
         v = int(text)
         self._setValue(v, policy)
 
     def _editor_text_changed(self, t):
-        if self.keyboardTracking():
+        if self.keyboardTracking() and not self._mask_text:
             self._setValue(int(t), _EmitPolicy.EmitIfChanged)
             self.lineEdit().setFocus()
             self._pending_emit = False
